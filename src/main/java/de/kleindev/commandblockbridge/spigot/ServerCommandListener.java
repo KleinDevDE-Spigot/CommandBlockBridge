@@ -26,14 +26,11 @@ public class ServerCommandListener implements Listener {
 
     @EventHandler
     public void onCommand(ServerCommandEvent e) {
-        System.out.println("a");
         if (e.getSender() instanceof BlockCommandSender) {
             if (e.getCommand().startsWith("[Bridge]")) {
                 run(e);
             } else if (e.getCommand().startsWith("[Bridge-async]")) {
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    run(e);
-                });
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> run(e));
             }
         }
     }
@@ -48,6 +45,7 @@ public class ServerCommandListener implements Listener {
 
             //Replace player names
             if (cmd.contains("@p")) {
+                SentryIo.addBreadcrumbMessage("Command contains \"@p\"");
                 try {
                     for (String s : cmd.split(" ")) {
                         if (s.startsWith("@p"))
@@ -55,12 +53,14 @@ public class ServerCommandListener implements Listener {
                     }
                 } catch (NullPointerException ex1) {
                     //There is no player in range
-                    e.getSender().sendMessage("There is no player in Range!");
+                    SentryIo.addBreadcrumbMessage("Error: No player in range");
+                    e.getSender().sendMessage("There is no player in range!");
                 }
             }
 
 
             if (cmd.contains("@a")) {
+                SentryIo.addBreadcrumbMessage("Command contains \"@a\"");
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     ByteArrayOutputStream b = new ByteArrayOutputStream();
                     DataOutputStream out = new DataOutputStream(b);
@@ -104,13 +104,17 @@ public class ServerCommandListener implements Listener {
         } catch (ChannelNotRegisteredException ex2) {
             e.setCancelled(true);
             e.getSender().sendMessage("No bungee detected, make sure you have BungeeCord!");
+            SentryIo.addBreadcrumbMessage("No Bungeecord detected. May the player connected directly to server");
         } catch (Exception ex3) {
             new Thread(() -> {
+                System.out.println("AN error occured while sending command to bungee. Reporting to SentryIo...");
+                SentryIo.addBreadcrumbMessage("Reporting to SentryIo...");
                 ex3.printStackTrace();
 
                 HashMap<String, String> extras = new HashMap<>();
                 extras.put("CommandBlock content", e.getCommand());
                 SentryIo.captureSpigot(ex3, extras);
+                System.out.println("Reported successfully!");
             }).start();
         }
     }
