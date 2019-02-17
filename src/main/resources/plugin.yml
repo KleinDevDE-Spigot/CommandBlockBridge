@@ -1,0 +1,6 @@
+name: CommandBlockBridge
+version: ${project.version}
+main: de.kleindev.commandblockbridge.spigot.Main
+authors: [KleinDev]
+website: https://kleindev.de
+#api-version: 1.13

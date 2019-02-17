@@ -1,0 +1,5 @@
+name: CommandBlockBridge
+version: ${project.version}
+main: de.kleindev.commandblockbridge.bungee.Main
+author: KleinDev
+description: A bridge between BungeeCord and commandblocks in MC Servers
