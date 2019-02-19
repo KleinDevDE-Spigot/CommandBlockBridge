@@ -13,7 +13,7 @@ import java.util.*;
 public class SentryIo {
     private static SentryClient sentry = Sentry.init("XXX");
     private static List<Breadcrumb> breadcrumbs = new ArrayList<>();
-    private static String version = "1.0";
+    private static String version = "1.1";
 
     public static void captureSpigot(Exception e, HashMap<String, String> extras) {
         Context context = sentry.getContext();
@@ -58,6 +58,10 @@ public class SentryIo {
                 .setData(data)
                 .build()
         );
+    }
+
+    public static void addBreadcrumb(Breadcrumb breadcrumb) {
+        breadcrumbs.add(breadcrumb);
     }
 
     public static void addBreadcrumbMessage(String message) {

@@ -20,45 +20,35 @@ public class ServerCommandListener implements Listener {
     private String servername = plugin.getConfig().getString("ServerName");
     private boolean debug = plugin.getConfig().getBoolean("Debug");
 
-    public ServerCommandListener() {
-        System.out.println("Init");
-    }
-
     @EventHandler
     public void onCommand(ServerCommandEvent e) {
         if (e.getSender() instanceof BlockCommandSender) {
-            if (e.getCommand().startsWith("[Bridge]")) {
-                run(e);
-            } else if (e.getCommand().startsWith("[Bridge-async]")) {
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> run(e));
+            if (e.getCommand().startsWith("[Bridge] ") && !e.getCommand().equalsIgnoreCase("[Bridge] ")) {
+                e.setCancelled(true);
+                run((BlockCommandSender) e.getSender(), e.getCommand().substring(9));
+            } else if (e.getCommand().startsWith("[Bridge-async] ") && !e.getCommand().equalsIgnoreCase("[Bridge-async] ")) {
+                e.setCancelled(true);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> run((BlockCommandSender) e.getSender(), e.getCommand().substring(15)));
             }
         }
     }
 
-    private void run(ServerCommandEvent e) {
+    private void run(BlockCommandSender sender, String cmd) {
         try {
-            e.setCancelled(true);
             SentryIo.addBreadcrumbMessage("ServerCommandListener triggered and CommandBlock with bridge detected");
-            BlockCommandSender sender = (BlockCommandSender) e.getSender();
             Location block_loc = sender.getBlock().getLocation();
-            String cmd = e.getCommand().substring(9);
 
             //Replace player names
             if (cmd.contains("@p")) {
                 SentryIo.addBreadcrumbMessage("Command contains \"@p\"");
                 try {
-                    for (String s : cmd.split(" ")) {
-                        if (s.startsWith("@p"))
-                            cmd.replace(s, CommandUtils.getTarget(e.getSender(), s).getName());
-                    }
+                    cmd = cmd.replace("@p", getNearestPlayer(sender).getName());
                 } catch (NullPointerException ex1) {
                     //There is no player in range
                     SentryIo.addBreadcrumbMessage("Error: No player in range");
-                    e.getSender().sendMessage("There is no player in range!");
+                    sender.sendMessage("There is no player in range!");
                 }
             }
-
-
             if (cmd.contains("@a")) {
                 SentryIo.addBreadcrumbMessage("Command contains \"@a\"");
                 for (Player p : Bukkit.getOnlinePlayers()) {
@@ -102,20 +92,34 @@ public class ServerCommandListener implements Listener {
                     System.out.println("Cannot send command to Bungee, cause there is no online player on server!");
             }
         } catch (ChannelNotRegisteredException ex2) {
-            e.setCancelled(true);
-            e.getSender().sendMessage("No bungee detected, make sure you have BungeeCord!");
+            sender.sendMessage("No bungee detected, make sure you have BungeeCord!");
             SentryIo.addBreadcrumbMessage("No Bungeecord detected. May the player connected directly to server");
         } catch (Exception ex3) {
+            String finalCmd = cmd;
             new Thread(() -> {
-                System.out.println("AN error occured while sending command to bungee. Reporting to SentryIo...");
+                System.out.println("An error occured while sending command to bungee. Reporting to SentryIo...");
                 SentryIo.addBreadcrumbMessage("Reporting to SentryIo...");
                 ex3.printStackTrace();
 
                 HashMap<String, String> extras = new HashMap<>();
-                extras.put("CommandBlock content", e.getCommand());
+                extras.put("CommandBlock content", finalCmd);
                 SentryIo.captureSpigot(ex3, extras);
                 System.out.println("Reported successfully!");
             }).start();
         }
+    }
+
+    private Player getNearestPlayer(BlockCommandSender sender) {
+        Location loc = sender.getBlock().getLocation();
+        Player nearest = null;
+        double distance = Double.MAX_VALUE;
+        for (Player players : loc.getWorld().getPlayers()) {
+            double dist = distance;
+            if ((dist = players.getLocation().distance(loc)) < distance) {
+                nearest = players;
+                distance = dist;
+            }
+        }
+        return nearest;
     }
 }
